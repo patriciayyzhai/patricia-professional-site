@@ -1,0 +1,40 @@
+name: Repair site assets
+
+on:
+  push:
+    paths:
+      - '.github/workflows/repair-assets.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Repair images and copy
+        run: |
+          base64 --decode assets/panel-fixed.jpg.b64.txt > assets/kl-panel.jpg
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text()
+          s = s.replace('Evaluating Hunyuan through a global Trust & Safety lens', 'Evaluating foundational models through a global Trust & Safety lens')
+          s = s.replace('Exploring WorkBuddy, agentic benchmarks, and the safety questions that appear when AI begins acting rather than only answering.', 'Exploring agent harnesses, agentic benchmarks, and the safety questions that appear when AI begins acting rather than only answering.')
+          p.write_text(s)
+          css = Path('styles.css')
+          c = css.read_text()
+          if '/* compact footer repair */' not in c:
+              c += '\n/* compact footer repair */\n#speaking.section{padding-bottom:56px} footer{min-height:68px} .article{padding-bottom:64px} .article-figure img{display:block} @media(max-width:560px){footer{min-height:72px}}\n'
+          css.write_text(c)
+          PY
+          rm -f assets/panel-fixed.jpg.b64.txt noop.txt fix-note.txt
+      - name: Commit repair
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html styles.css assets/kl-panel.jpg
+          git add -u
+          git commit -m "Repair panel image and site copy"
+          git push
